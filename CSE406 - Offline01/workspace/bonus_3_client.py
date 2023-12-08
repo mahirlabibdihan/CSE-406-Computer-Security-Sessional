@@ -1,66 +1,72 @@
 import socket
 from bonus_3_aes import *
-from elliptic_curve import *
+from task_2_ecc import *
 import pickle
 import base64
 import time
-
-def binary_to_string(binary_string):
-    return ' '.join(chr(int(binary_string[i:i+8], 2)) for i in range(0, len(binary_string), 8))
+from logger import *
 
 
-def AES_DECRYPTION(text, key, nonce, AES_LEN):
-    key = binary_to_string(bin(key)[2:])  # AES_LEN bits
-    cipher = AES_CTR(key, nonce, AES_LEN)
-    cipher.keySchedule()
-    decrypted_text = cipher.decrypt(text)
-    return decrypted_text
-
-
-def main():
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    port = 12345
-    s.connect(('127.0.0.1', port))
-    print('Connected to', '127.0.0.1 :', port)
+def config(s):
     obj = pickle.loads(s.recv(4096))
-
     AES_LEN = obj['AES_LEN']
     G = obj['G']
     a = obj['a']
     p = obj['p']
-    A_nonce = obj['A_nonce']
+    nonce = obj['nonce']
     A_key = obj['A_key']
 
+    print("Shared nonce:", nonce)
+    print("Public key:", A_key)
+
     key_pr = random.randint(1, p - 1)
-    nonce_pr = random.randint(1, p - 1)
-    
-    R_key = scalarMultiply(key_pr, A_key, a, p)
-    R_nonce = scalarMultiply(nonce_pr, A_nonce, a, p)
-    
-    B_key = scalarMultiply(key_pr, G, a, p)
-    B_nonce = scalarMultiply(nonce_pr, G, a, p)
+    print("Private key:", key_pr)
 
-    obj = {
-        'B_nonce': B_nonce,
-        'B_key': B_key
-    }
-    
-    s.sendall(pickle.dumps(obj))
+    ecc = ECC()
+    R_key = ecc.scalar_multiply(key_pr, A_key, a, p)
+    B_key = ecc.scalar_multiply(key_pr, G, a, p)
 
+    print("Shared key:", R_key[0])
+    s.sendall(pickle.dumps(B_key))
+    return [R_key[0], nonce, AES_LEN]
+
+
+def transmission(s, cipher):
+    print()
     start = time.time()
+    print_log("Ready for file transmission", start)
+    msg_len = pickle.loads(s.recv(28))
+    print_log("Received message length", start)
+    xor_text = cipher.start_decrypt(msg_len)
+    print_log("Ready to decrypt", start)
     encrypted_text = pickle.loads(s.recv(4096))
+    print_log("File received", start)
+    decrypted_text = cipher.end_decrypt(encrypted_text, xor_text)
+    print_log("Decryption successful", start)
 
-    print("File received successfully :", (time.time()-start), "seconds")
-
-    start = time.time()
-    decrypted_text = AES_DECRYPTION(encrypted_text, R_key[0], R_nonce[0], AES_LEN)
-    print("File decrypted successfully :", (time.time()-start), "seconds")
-    file_path = 'sample_out.jpg'
+    file_path = FILE_DIR+'/output.txt'
     with open(file_path, 'wb') as output_file:
         for byte in decrypted_text:
             output_file.write(bytes([ord(byte)]))
     s.close()
+    print_log("File saved as: " + file_path, start)
 
 
+def establishConnection():
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    print("Enter server port:", end=' ')
+    port = int(input())
+    s.connect(('127.0.0.1', port))
+    print('Connected to', '127.0.0.1 :', port)
+    return s
+
+
+def main():
+    socket = establishConnection()
+    [key, nonce, AES_LEN] = config(socket)
+    cipher = setupCipher(key, nonce, AES_LEN)
+    transmission(socket, cipher)
+
+FILE_DIR = input("File Directory: ")
 if __name__ == "__main__":
     main()

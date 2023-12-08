@@ -1,0 +1,10 @@
+1905072/
+__pycache__/
+*.txt
+*.jpg
+*.mp4
+*.zip
+*.pptx
+*.pdf
+upload/
+practice/

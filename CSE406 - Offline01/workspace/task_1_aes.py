@@ -1,25 +1,24 @@
-import os
 import numpy as np
 from BitVector import *
 from tables import *
-import math
+from performance import *
 
-# https://uwillnvrknow.github.io/deCryptMe/pages/programAES.html
 ROUND_COUNT = {128: 10, 192: 12, 256: 14}
-AES_MODULUS = BitVector(bitstring="100011011")
+KEY_COUNT = {128: 44, 192: 52, 256: 60}
+AES_MODULUS = BitVector(bitstring="100011011") # 11B
 
 
 class AES_CBC:
     # key must be 128/192/256
     def __init__(self, key, aes_len):
         self.aes_len = aes_len
-        self.key = self.adjustKey(key).encode(
-            'utf-8')  # os.urandom(aes_len//8)
+        self.key = self.adjust_key(key, aes_len//8)
+        self.key = [ord(char) for char in self.key]
         self.all_keys = []
 
-    def adjustKey(self, key):
+    def adjust_key(self, key, len):
         # Rather use KDF
-        return key[:self.aes_len//8].ljust(self.aes_len//8, '\0')
+        return key[:len].ljust(len, '\0')
 
     def string_to_hex_space_separated(self, input_string):
         return " ".join(format(ord(char), "02x") for char in input_string)
@@ -37,7 +36,7 @@ class AES_CBC:
 
     def sub_word(self, list, inv=False):
         sbox = InvSbox if inv else Sbox
-        return np.array([sbox[bv] for bv in list])
+        return np.array([sbox[bv] for bv in list], dtype=np.uint8)
 
     def sub_matrix(self, matrix, inv=False):
         for i in range(len(matrix)):
@@ -75,6 +74,8 @@ class AES_CBC:
             if round != ROUND_COUNT[self.aes_len]:
                 state = self.mix_columns(state, inv)
             if not inv:
+                # print(state)
+                # print(keys[round])
                 state ^= keys[round]
 
         return state
@@ -91,13 +92,13 @@ class AES_CBC:
     def func_g(self, word, round_constant):
         word = self.sub_word(self.rot_word(word, 1))
         word[0] ^= round_constant
-        return np.array(word)
+        return np.array(word, dtype=np.uint8)
 
     def pad(self, data):
         while len(data) % 16 != 0:
             data += " "
         return data
-    
+
     def unpad(self, data):
         i = len(data) - 1
         while i >= 0 and data[i].isspace():
@@ -115,46 +116,39 @@ class AES_CBC:
                     return bytes_matrix
         return bytes_matrix
     
-    def keySchedule(self):
-        n = self.aes_len // 32
-        self.all_rounds = np.empty(
-            (ROUND_COUNT[self.aes_len] + 1, n, 4), dtype=np.uint8)
-        key_round_0 = self.to_matrix(self.key, n, 4)
-        self.all_rounds[0] = key_round_0
+    # https://en.wikipedia.org/wiki/AES_key_schedule
+    def key_expansion(self):
+        expanded_key = [int(c) for c in self.key]
+        expanded_key = [np.array(expanded_key[i:i+4], dtype=np.uint8)
+                        for i in range(0, len(expanded_key), 4)]
+
+        N = self.aes_len // 32
+        round_num = self.aes_len // 32
         round_constant = 1
-        for round in range(1, ROUND_COUNT[self.aes_len] + 1):
-            self.all_rounds[round] = np.empty((n, 4), dtype=np.uint8)
-
-            self.all_rounds[round][0] = self.all_rounds[round - 1][0] ^ self.func_g(
-                self.all_rounds[round - 1][-1], round_constant
-            )
-
-            for i in range(1, len(self.all_rounds[round - 1])):
-                self.all_rounds[round][i] = self.all_rounds[round][i -
-                                                                   1] ^ self.all_rounds[round - 1][i]
-
-            round_constant = self.gf_multiply(
+        while round_num < KEY_COUNT[self.aes_len]:
+            from_N_rounds_ago = expanded_key[round_num-N]
+            # print(from_N_rounds_ago)
+            prev_round = expanded_key[round_num-1]
+            if round_num % N == 0:
+                word = self.func_g(prev_round, round_constant)
+                word = from_N_rounds_ago ^ word
+                  
+                round_constant = self.gf_multiply(
                 BitVector(intVal=round_constant), BitVector(hexstring="02")
             )
+            elif round_num>=N and N>6 and round_num % N == 4:
+                word = from_N_rounds_ago ^ self.sub_word(prev_round)
+            else:
+                word = from_N_rounds_ago ^ prev_round
+            expanded_key.append(word)
+            round_num += 1
 
-        original_shape = self.all_rounds.shape
-        
-        self.all_keys = np.zeros((original_shape[0],4,4), dtype=np.uint8)
-        i = 0
-        j = 0
-        for word in self.all_rounds.reshape(original_shape[0]*original_shape[1], 4):
-            self.all_keys[i][j] = word
-            j += 1
-            if (j == 4):
-                i += 1
-                j = 0
-            if (i == ROUND_COUNT[self.aes_len] + 1):
-                break
-            
-        self.all_keys = [np.transpose(key) for key in self.all_keys]
-        # self.all_keys = [np.transpose(key) for key in self.all_rounds]
+        keys = [expanded_key[loop:loop+4]
+                for loop in range(0, len(expanded_key), 4)]
+        # print(keys)
+        self.all_keys = [np.transpose(key) for key in keys]
 
-        
+
     def block_cipher_cryption(self, plain_text, keys, decrypt):
         block = plain_text.reshape((4, 4))
         block = np.transpose(block)  # Column major
@@ -164,15 +158,15 @@ class AES_CBC:
     def block_cipher(self, data, keys, iv, decrypt=False):
         crypted_text = np.empty(0, dtype=np.uint8)
 
-        last_crypted = np.frombuffer(iv,  dtype=np.uint8)
+        iv = self.adjust_key(iv, 16)
+        last_crypted = np.array([ord(char) for char in iv],  dtype=np.uint8)
 
         last_plain = last_crypted
 
         for i in range(0, len(data), 16):
-
             text_chunk = data[i: i + 16]
-            bytes_chunk = b''.join([bytes([ord(char)]) for char in text_chunk])
-            bytes_array = np.frombuffer(bytes_chunk,  dtype=np.uint8)
+            bytes_array = np.array([ord(char)
+                                   for char in text_chunk],  dtype=np.uint8)
 
             if not decrypt:
                 bytes_array = bytes_array ^ last_crypted
@@ -191,23 +185,27 @@ class AES_CBC:
 
     def encrypt(self, plain_text, iv):
         padded_text = self.pad(plain_text)
-        return self.block_cipher(padded_text, self.all_keys, iv)
+        return iv + self.block_cipher(padded_text, self.all_keys, iv)
 
-    def decrypt(self, encrypted_text, iv):
+    def decrypt(self, encrypted_text):
         decrypted_text = self.block_cipher(
-            encrypted_text, self.all_keys[::-1], iv, True)
+            encrypted_text[16:], self.all_keys[::-1], encrypted_text[:16], True)
         return self.unpad(decrypted_text)
 
-def main():    
-    key = "BUET CSE19 Batch"
-    cipher = AES_CBC(key, 128)
-    cipher.keySchedule()
 
-    msg = "Never Gonna Give you up"
+def main():
+    key = "Thats my Kung Fu"
+    cipher = AES_CBC(key, 128)
+    cipher.key_expansion()
+
+    msg = "Two One Nine TwoTwo One Nine Two"
     # msg = input()
     # iv = ("\0"*16).encode('utf-8')
-    iv = os.urandom(16)
-    print(cipher.encrypt(msg, iv))
-    print(cipher.decrypt(cipher.encrypt(msg, iv), iv))
+    iv = "0123456789ABCDEF"
+    
+    print(cipher.encrypt(msg, iv)[16:])
+    print(cipher.decrypt(cipher.encrypt(msg, iv)))
 
-# main()
+
+if __name__ == "__main__":
+    main()
