@@ -3,8 +3,8 @@ __pycache__/
 *.txt
 *.jpg
 *.mp4
-*.zip
 *.pptx
 *.pdf
+*.mkv
 upload/
 practice/

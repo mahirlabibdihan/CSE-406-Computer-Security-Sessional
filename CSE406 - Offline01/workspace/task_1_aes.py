@@ -5,7 +5,7 @@ from performance import *
 
 ROUND_COUNT = {128: 10, 192: 12, 256: 14}
 KEY_COUNT = {128: 44, 192: 52, 256: 60}
-AES_MODULUS = BitVector(bitstring="100011011") # 11B
+AES_MODULUS = BitVector(bitstring="100011011")  # 11B
 
 
 class AES_CBC:
@@ -115,7 +115,7 @@ class AES_CBC:
                 if k == len(bytes_chunk):
                     return bytes_matrix
         return bytes_matrix
-    
+
     # https://en.wikipedia.org/wiki/AES_key_schedule
     def key_expansion(self):
         expanded_key = [int(c) for c in self.key]
@@ -132,11 +132,11 @@ class AES_CBC:
             if round_num % N == 0:
                 word = self.func_g(prev_round, round_constant)
                 word = from_N_rounds_ago ^ word
-                  
+
                 round_constant = self.gf_multiply(
-                BitVector(intVal=round_constant), BitVector(hexstring="02")
-            )
-            elif round_num>=N and N>6 and round_num % N == 4:
+                    BitVector(intVal=round_constant), BitVector(hexstring="02")
+                )
+            elif round_num >= N and N > 6 and round_num % N == 4:
                 word = from_N_rounds_ago ^ self.sub_word(prev_round)
             else:
                 word = from_N_rounds_ago ^ prev_round
@@ -147,7 +147,6 @@ class AES_CBC:
                 for loop in range(0, len(expanded_key), 4)]
         # print(keys)
         self.all_keys = [np.transpose(key) for key in keys]
-
 
     def block_cipher_cryption(self, plain_text, keys, decrypt):
         block = plain_text.reshape((4, 4))
@@ -202,8 +201,8 @@ def main():
     # msg = input()
     # iv = ("\0"*16).encode('utf-8')
     iv = "0123456789ABCDEF"
-    
-    print(cipher.encrypt(msg, iv)[16:])
+
+    print_cipher(cipher.encrypt(msg, iv)[16:])
     print(cipher.decrypt(cipher.encrypt(msg, iv)))
 
 
